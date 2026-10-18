@@ -1,0 +1,121 @@
++==========================================================================+
+|                         SAFETY BACKPLANE BOARD                           |
+|      Unified Discrete Logic Safety Computer (No MCU, No Load)            |
++==========================================================================+
+
+   POWER INPUT & BASELINES
+   -----------------------
+   [BAT+]----[FUSE]----+-----------------------------------------------+
+                       |                                               |
+                      [RSENSE]                                         |
+                       |                                               |
+                      NODE_I                                           |
+                                                                       |
+   [BAT-]---------------------------------------------------------------+---- GND
+
+
+==============================================================================
+  COLD-START DELAY (PREVENTS IN-RUSH ACTIVATION)
+==============================================================================
+
+   [BAT+]----[RCH] 100kΩ----+---- NODE_DELAY ----[Q1] NPN ---> DELAY_OK
+                            |
+                           [CDELAY] 10µF
+                            |
+                           GND
+
+   DELAY_OK gates all downstream logic:
+   DELAY_OK ----[RDK]----> ENABLE_WINDOW
+
+
+==============================================================================
+  MULTI-SENSOR FIRE-PREVENTION MATRIX
+==============================================================================
+
+   SENSORS:
+     NODE_I    (current sense from RSENSE)
+     NODE_TH   (hotspot thermistor)
+     NODE_CASE (enclosure thermistor)
+     NODE_AIR  (airflow vane / thermal airflow sensor)
+
+   COMPARATORS:
+     U_I    : NODE_I    vs I_REF_MAX   → I_FAULT
+     U_TH   : NODE_TH   vs T_REF_HOT   → TH_FAULT
+     U_CASE : NODE_CASE vs T_REF_CASE  → CASE_FAULT
+     U_AIR  : NODE_AIR  vs AIR_MIN     → AIR_FAULT
+
+   DISCRETE OR NETWORK:
+     I_FAULT ----\
+                  +----> MATRIX_FAULT
+     TH_FAULT ---/
+     CASE_FAULT -\
+                  +----> MATRIX_FAULT
+     AIR_FAULT --/
+
+   MATRIX_FAULT ----[Q2] NPN ---> FAULT_LINE
+
+
+==============================================================================
+  THERMAL HYSTERESIS BLOCK (AUTO-COOLDOWN LOGIC)
+==============================================================================
+
+   NODE_TH --> U_HI (trip comparator)
+                IN+ = NODE_TH
+                IN- = T_HIGH_REF
+                → HOT_FAULT
+
+   NODE_TH --> U_LO (reset comparator)
+                IN+ = NODE_TH
+                IN- = T_LOW_REF
+                → COOL_OK
+
+   HOT_FAULT ----[Q3] NPN----> HYST_SET
+   COOL_OK  ----[Q4] NPN----> HYST_RESET
+
+   SR LATCH (Discrete):
+     HYST_SET ----\
+                   +----> HYST_LATCH_OUT
+     HYST_RESET ---/
+
+   HYST_LATCH_OUT → HYST_FAULT
+
+
+==============================================================================
+  MASTER SAFETY LATCH (GLOBAL FAULT MEMORY)
+==============================================================================
+
+   FAULT_LINE ----\
+                   +----> MASTER_SET
+   HYST_FAULT ----/
+
+   MASTER_SET ----[Q5] NPN----> MASTER_LATCH_SET
+
+   RESET_SW ----[Q6] NPN----> MASTER_LATCH_RESET
+
+   CROSS-COUPLED LATCH:
+     MASTER_LATCH_SET ----> QLATCH_M
+     MASTER_LATCH_RESET --> QLATCH_MB
+
+   QLATCH_M → MASTER_FAULT_OUT (HIGH = latched fault)
+
+
+==============================================================================
+  GLOBAL SHUTDOWN OUTPUT (FINAL BOARD OUTPUT)
+==============================================================================
+
+   GLOBAL_SHUTDOWN:
+     MASTER_FAULT_OUT ----> GLOBAL_SHUTDOWN (HIGH = inhibit system)
+
+   LED INDICATORS:
+     MATRIX_FAULT      ----[RLED1]----> LED_MATRIX
+     HYST_FAULT        ----[RLED2]----> LED_HYST
+     MASTER_FAULT_OUT  ----[RLED3]----> LED_MASTER
+
++==========================================================================+
+| BOARD SUMMARY                                                            |
+| - Cold-start delay gates activation.                                     |
+| - Multi-sensor matrix detects current, heat, enclosure temp, airflow.    |
+| - Hysteresis enforces cooldown before re-enable.                         |
+| - Master latch prevents auto-restart after any fault.                    |
+| - Entire board is discrete logic, no MCU, no load.                       |
++==========================================================================+
