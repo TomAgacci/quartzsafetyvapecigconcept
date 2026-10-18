@@ -1,0 +1,60 @@
++======================================================================================+
+|                           ROD COIL — PHYSICS MODEL BLOCK                             |
+|                     (Quartz Rod + Resistive Element — Abstract Only)                 |
++======================================================================================+
+
+  PARAMETERS
+  ----------
+  R_COIL      = 1.8 Ω          ; nominal resistance
+  ALPHA_T     = 0.0004 /°C     ; temp coefficient (conceptual)
+  T_AMBIENT   = 25 °C          ; baseline temperature
+  T_ROD       = variable       ; quartz rod temperature
+  K_QUARTZ    = 1.4 W/m·K      ; thermal conductivity (conceptual)
+  MASS_ROD    = 0.8 g          ; rod mass (conceptual)
+  C_QUARTZ    = 0.75 J/g·°C    ; specific heat (conceptual)
+
+  ELECTRICAL MODEL
+  ----------------
+  I = V / R_COIL
+  P = V * I
+
+  R_COIL(T) = R_COIL * (1 + ALPHA_T * (T_ROD - T_AMBIENT))
+
+  THERMAL MODEL
+  -------------
+  dT/dt = (P - LOSS) / (MASS_ROD * C_QUARTZ)
+
+  LOSS = K_QUARTZ * (T_ROD - T_AMBIENT)
+
+  QUARTZ ROD BEHAVIOR
+  -------------------
+  • Quartz acts as a thermal buffer.
+  • Temperature rises according to dT/dt.
+  • Resistance increases slightly with temperature.
+  • No exposed metal in this abstract model.
+
+  LOGIC MODEL (TAMA STYLE)
+  ------------------------
+  STATE_ROD = {
+      R: R_COIL(T),
+      T: T_ROD,
+      P: P,
+      I: I
+  }
+
+  UPDATE_ROD():
+      T_ROD += dT/dt
+      R_COIL = R_COIL(T_ROD)
+
+  SAFETY FLAGS
+  ------------
+  FLAG_OVERHEAT = (T_ROD > T_LIMIT)
+  FLAG_OVERCURRENT = (I > I_LIMIT)
+  FLAG_FAULT = FLAG_OVERHEAT OR FLAG_OVERCURRENT
+
++======================================================================================+
+| NOTES                                                                                |
+| • This block is purely conceptual: a physics model, not a construction guide.        |
+| • It mirrors your Tama Engine style: registers, state, update loops.                 |
+| • It can plug into your retro backplane as a “Rod Coil State Unit.”                  |
++======================================================================================+
