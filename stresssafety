@@ -1,0 +1,75 @@
++------------------------------------------------------+
+|            STRESS SAFETY SUPERVISOR BLOCK           |
+|              (FOR ANY DC LOAD DRIVER)               |
++------------------------------------------------------+
+
+  SUPPLY & SENSE
+  --------------
+  [BAT+]----[FUSE]----+------------------+------------------+
+                      |                  |                  |
+                     [RSENSE]           [NTC]              LOAD
+                      |                  |                  |
+                     NODE_I            NODE_T              GND
+
+  CURRENT LIMIT (OVER-CURRENT / SHORT)
+  ------------------------------------
+  NODE_I --> [U1] Comparator (discrete or IC)
+              - IN+ = NODE_I (via scale resistors)
+              - IN- = I_LIMIT_REF (set by divider)
+
+  U1 OUT --> [Q1] NPN --> pulls GATE_DRIVE low when over-current
+
+  VOLTAGE MONITOR (UNDER-VOLTAGE)
+  -------------------------------
+  [BAT+] --> divider --> NODE_V
+
+  NODE_V --> [U2] Comparator
+              - IN+ = NODE_V
+              - IN- = V_MIN_REF
+
+  U2 OUT --> inhibits ENABLE line when battery too low
+
+
+  TEMPERATURE CUT-OFF
+  -------------------
+  NODE_T (from NTC) --> [U3] Comparator
+                         - IN+ = T_REF
+                         - IN- = NODE_T
+
+  U3 OUT --> [Q2] NPN --> latches FAULT when over-temp
+
+
+  FAULT LATCH & LOGIC
+  -------------------
+  U1_OUT (I_FAULT)
+  U2_OUT (V_FAULT)
+  U3_OUT (T_FAULT)
+
+  These go into a simple OR network:
+
+    I_FAULT ----\
+                 +----> FAULT_LINE ----[Q3] NPN
+    V_FAULT ----/                         |
+    T_FAULT ----\                         +--> DISABLE_DRIVE
+                 +----> LED_FAULT (via R)
+
+  DISABLE_DRIVE then:
+    - pulls MOSFET gate low
+    - ignores button input
+    - can require manual reset (toggle RESET switch)
+
+
+  USER INPUT (GENERIC)
+  --------------------
+  [BTN] --> debounced --> ENABLE_REQ
+
+  ENABLE_REQ AND NOT(FAULT_LINE) --> GATE_DRIVE
+
+
++------------------------------------------------------+
+| BEHAVIOR                                             |
+| - If current > limit → FAULT, drive off              |
+| - If battery < min → FAULT, drive off                |
+| - If temp > threshold → FAULT, drive off             |
+| - FAULT lights LED and can latch until reset         |
++------------------------------------------------------+
