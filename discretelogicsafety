@@ -1,0 +1,26 @@
++---------------- DISCRETE SAFETY LATCH ----------------+
+
+  INPUT FAULT LINE:
+    FIRE_FAULT_LINE --> [QSET] NPN
+
+  LATCH:
+    [QSET] and [QRESET] form a cross‑coupled pair:
+
+      QSET collector ----+----[R1]----> base of QLATCH
+                         |
+      QRESET collector --+----[R2]----> base of QLATCH_BAR
+
+      QLATCH and QLATCH_BAR are NPNs in SR‑latch topology.
+
+  OUTPUT:
+    QLATCH collector ----> LATCH_OUT (HIGH = fault latched)
+    LATCH_OUT ----> DISABLE_DRIVER
+
+  RESET:
+    [RESET_SW] momentary to pull base of QRESET high
+      → forces LATCH_OUT low → re‑enable driver (if no new fault)
+
+  BEHAVIOR:
+  - First FIRE_FAULT_LINE pulse sets latch → DISABLE_DRIVER stays active.
+  - System will not auto‑restart even if sensors recover.
+  - Manual RESET required, giving human oversight before re‑enable.
