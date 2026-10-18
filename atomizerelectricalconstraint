@@ -107,3 +107,180 @@ A discrete hardware analog:
 • Combinational logic: AND/OR/NOT networks to decide “fire or not”.
 • Timing: RC oscillators or discrete multivibrators to implement max puff duration and lockouts.
 • No MCU: everything is hard‑wired logic, like an old calculator or TTL state machine.
+
+OLD UNFORMATTED
+
+1. Electrical constraints for a 1.8 Ω coil on 18650
+Use Ohm’s law and power:
+
+Coil resistance: 
+𝑅
+=
+1.8
+ 
+Ω
+
+Battery nominal voltage: 
+𝑉
+≈
+3.7
+ V
+ (4.2 V full, ~3.0 V empty)
+
+At 4.2 V:
+
+Current: 
+𝐼
+=
+𝑉
+𝑅
+=
+4.2
+1.8
+≈
+2.33
+ A
+
+Power: 
+𝑃
+=
+𝑉
+⋅
+𝐼
+≈
+9.8
+ W
+
+At 3.7 V:
+
+Current: 
+𝐼
+≈
+2.06
+ A
+
+Power: 
+𝑃
+≈
+7.6
+ W
+
+So your driver has to safely handle ~2–2.5 A continuous, with proper cell protection and thermal limits.
+
+2. Block‑level architecture (no detailed schematic)
+You can think of the design in these blocks:
+
+Battery & protection block
+
+Cell: 18650 (high‑drain type in theory)
+
+Protection:
+
+Over‑current / short protection
+
+Under‑voltage cutoff
+
+Over‑temperature sensing
+
+This is usually done with dedicated protection ICs or discrete comparators + MOSFETs.
+
+Power switch / driver block
+
+High‑side or low‑side MOSFET rated for >10 A, low 
+𝑅
+DS(on)
+.
+
+Gate drive controlled by logic block.
+
+Ensures the coil sees battery voltage only when “fire” is active.
+
+Variable‑voltage / power control block  
+Conceptually two options:
+
+Buck / PWM control:
+
+Fixed battery voltage, duty‑cycle controlled to adjust effective power.
+
+Linear / resistive control (inefficient):
+
+Series elements to drop voltage—wastes power as heat, not ideal.
+
+In a safe, modern design, this is usually a PWM buck driver with feedback.
+
+Logic / “calculator‑style” control block (discrete)  
+Instead of an MCU, you can imagine:
+
+Button input: debounced via RC + Schmitt trigger or transistor network.
+
+Latch / timer:
+
+Monostable multivibrator (e.g., 555‑style discrete) to limit max puff duration.
+
+Comparator network:
+
+Sense battery voltage and/or coil current.
+
+Turn off drive when thresholds are exceeded.
+
+Transistor logic:
+
+AND: “button pressed” AND “battery OK” AND “temp OK” → drive MOSFET gate.
+
+This is analogous to your calculator’s ADD/SUB/MUL/DIV engine—just with logic gates instead of JS functions.
+
+You can map your Tama calculator idea like this:
+
+State registers: flip‑flops holding “battery OK”, “coil OK”, “timer active”.
+
+Operations:
+
+“ADD” → increment puff timer counter.
+
+“SUB” → decrement remaining allowed time.
+
+“COMPARE” → discrete comparator for voltage/current.
+
+All implemented with transistors + resistors, not a single integrated MCU.
+
+Connector / atomizer interface block
+
+Your “F‑connector” concept is just the mechanical/electrical interface.
+
+Needs:
+
+Low‑resistance path to coil.
+
+Insulation between + and −.
+
+Good thermal isolation from the logic board.
+
+3. Quartz rod coil & silica wick (concept only)
+At a conceptual level:
+
+Kanthal core fully embedded in quartz rod → no exposed metal.
+
+Silica fiber wick contacts the quartz, not bare wire.
+
+Electrically, the coil is still just a 1.8 Ω resistive element between the connector pins.
+
+From the circuit’s point of view, it doesn’t care about the mechanical details—only the resistance and thermal behavior.
+
+4. How your “calculator” idea maps to a discrete control core
+Your HTML/JS calculator:
+
+Stores values (current, stored)
+
+Applies operations (ADD, SUB, MUL, DIV)
+
+Runs scripts line‑by‑line
+
+A discrete hardware analog:
+
+Registers: small banks of flip‑flops for state (battery level bands, timer count).
+
+Combinational logic: AND/OR/NOT networks to decide “fire or not”.
+
+Timing: RC oscillators or discrete multivibrators to implement max puff duration and lockouts.
+
+No MCU: everything is hard‑wired logic, like an old calculator or TTL state machine.
