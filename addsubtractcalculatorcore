@@ -1,0 +1,109 @@
++-------------------------------------------------------------+
+|                    ADD / SUB CALCULATOR CORE                |
++-------------------------------------------------------------+
+
+  SUPPLY (5V REGULATED)
+  ---------------------
+  [BAT+]----[VREG 5V]------------------+----------------------+
+                                       |                      |
+                                      [RPD] 10kΩ             [RPD] 10kΩ
+                                       |                      |
+  [BAT-]-------------------------------+----------------------+
+                                       |                      |
+                                      GND                    GND
+
+
+  INPUTS
+  ------
+  BTN_OP   (momentary)  POT_CTRL (10kΩ linear)
+
+  BTN_OP:
+    [BTN_OP]----+------------------------[RPU] 10kΩ----+---- 5V
+                |                                      |
+               [C1] 100nF                             [Q1] NPN
+                |                                      |
+               GND                                   NODE_OP
+                |
+    (RC debounce + NPN to create clean logic pulse)
+
+  POT_CTRL:
+    [POT] top ---- 5V
+    [POT] wiper --+----> NODE_ANALOG
+    [POT] bottom - GND
+
+    NODE_ANALOG → feeds simple 4‑level comparator ladder:
+
+    NODE_ANALOG --[R1]--+--[R2]--+--[R3]--+--[R4]-- GND
+                         |        |        |
+                        [Q2]     [Q3]     [Q4]
+                         |        |        |
+                       BIT0     BIT1     BIT2   (3‑bit operand)
+
+
+  CORE REGISTERS (4‑bit ACCUMULATOR)
+  ----------------------------------
+  ACC0, ACC1, ACC2, ACC3 implemented as D flip‑flops:
+
+    BIT0 ----> [FA0] ----> [FF0] ----> ACC0
+    BIT1 ----> [FA1] ----> [FF1] ----> ACC1
+    BIT2 ----> [FA2] ----> [FF2] ----> ACC2
+    0   ----> [FA3] ----> [FF3] ----> ACC3
+
+  Each [FFx] is built from discrete transistors:
+
+    [FFx]:
+      [Q5] NPN, [Q6] NPN, [R5–R8] forming master–slave latch
+      CLK from NODE_OP pulse
+
+
+  ADD / SUB SELECT
+  ----------------
+  MODE_SUB toggle switch:
+
+    [SW_MODE]----[RMS] 10kΩ---- 5V
+                 |
+                [Q7] NPN → NODE_MODE (HIGH = SUB, LOW = ADD)
+
+  TWO’S COMPLEMENT FOR SUB:
+    BIT0..BIT2 → XOR with NODE_MODE:
+
+      BITn ----[Q8/Q9 pair]----> BITn' (inverted when SUB)
+      CARRY_IN = NODE_MODE (1 for SUB, 0 for ADD)
+
+    FA0–FA3 are full adders built from discrete gates:
+
+      [FAx]:
+        SUM  = A XOR B XOR Cin
+        Cout = majority(A,B,Cin)
+      Implemented with:
+        - XOR: 4 × NPN + resistor network
+        - AND/OR: 2 × NPN + resistors
+
+
+  CLOCK / OP PULSE
+  ----------------
+  NODE_OP (from Q1) → CLK line:
+
+    NODE_OP ----[RCLK] 1kΩ----> all FFx CLK inputs
+
+
+  OUTPUT / DISPLAY
+  ----------------
+  ACC0..ACC3 → LED bar or 7‑segment driver:
+
+    ACC0 ----[RLED0] 1kΩ----> LED0 → GND
+    ACC1 ----[RLED1] 1kΩ----> LED1 → GND
+    ACC2 ----[RLED2] 1kΩ----> LED2 → GND
+    ACC3 ----[RLED3] 1kΩ----> LED3 → GND
+
+  Optional overflow LED:
+
+    CARRY_OUT_FA3 ----[RLED_OV] 1kΩ----> LED_OV → GND
+
++-------------------------------------------------------------+
+| OPERATION                                                   |
+| - POT sets 3‑bit operand (0–7) via comparator ladder        |
+| - MODE_SUB selects ADD or SUB (two’s complement)            |
+| - BTN_OP pulse clocks operand into accumulator via FAs      |
+| - LEDs show current 4‑bit accumulator value                 |
++-------------------------------------------------------------+
