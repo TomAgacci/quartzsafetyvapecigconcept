@@ -1,0 +1,31 @@
++------------- MULTI‑SENSOR FIRE‑PREVENTION MATRIX -------------+
+
+  SENSORS:
+    NODE_I    (current sense via RSENSE)
+    NODE_TH   (hotspot NTC)
+    NODE_CASE (enclosure NTC)
+    NODE_AIR  (airflow sensor, e.g., thermistor or vane switch)
+
+  COMPARATORS:
+    U_I   : NODE_I   vs I_REF_MAX   → I_FAULT
+    U_TH  : NODE_TH  vs T_REF_HOT   → TH_FAULT
+    U_CASE: NODE_CASE vs T_REF_CASE → CASE_FAULT
+    U_AIR : NODE_AIR vs AIR_MIN     → AIR_FAULT
+
+  LOGIC OR:
+    I_FAULT ----\
+                 +----> FIRE_FAULT_LINE
+    TH_FAULT ---/
+    CASE_FAULT -\
+                 +----> FIRE_FAULT_LINE
+    AIR_FAULT --/
+
+  FIRE_FAULT_LINE --> [Q_MASTER] NPN
+                        |
+                        +--> DISABLE_DRIVER
+                        +--> LED_FIRE_FAULT
+
+  BEHAVIOR:
+  - Any single sensor crossing its limit asserts FIRE_FAULT_LINE.
+  - Driver is immediately disabled and fault indicated.
+  - You can weight sensors (e.g., require TH_FAULT + CASE_FAULT) by adding AND gates.
