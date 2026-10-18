@@ -1,0 +1,35 @@
++-------------------------------------------------------------+
+|                     LOGIC MCU CORE                     |
+|-------------------------------------------------------------|
+|  POWER: 3.7V–5V DC (regulated from 18650 or USB source)     |
+|                                                             |
+|  [BAT+]----[SW1]----+----[VREG 3.3V]----+----[MCU VCC]      |
+|                     |                   |                   |
+|                     |                   +----[POT VCC]      |
+|                     |                                       |
+|  [BAT-]---------------------------------[MCU GND]-----------|
+|                                                             |
+|  INPUTS:                                                    |
+|   BTN_FIRE  -> MCU D2 (digital input, pull-down resistor)   |
+|   POT_CTRL  -> MCU A0 (analog input, 10kΩ potentiometer)    |
+|                                                             |
+|  LOGIC BLOCK (TAMA ENGINE):                                 |
+|   D2 HIGH  → triggers ADD routine                           |
+|   D2 LOW   → triggers SUB routine                           |
+|   A0 VALUE → sets operand magnitude (0–1023 mapped to 0–9)  |
+|                                                             |
+|  DISPLAY / FEEDBACK:                                        |
+|   MCU D8–D11 → 4-bit output to LED array or 7-seg driver    |
+|   MCU D12    → status LED (ON when operation active)        |
+|                                                             |
+|  CORE ROUTINE (simplified):                                 |
+|   if BTN_FIRE pressed:                                      |
+|       read POT_CTRL                                         |
+|       perform ADD or SUB depending on toggle state          |
+|       update display                                        |
+|                                                             |
+|  OPTIONAL:                                                  |
+|   - D13 PWM output for analog feedback                      |
+|   - D3/D4 serial pins for debugging                         |
+|                                                             |
++-------------------------------------------------------------+
