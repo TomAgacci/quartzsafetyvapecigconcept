@@ -1,0 +1,93 @@
+TIME → → → → → → → → → → → → → → → → → →
+
+t0      t1        t2        t3        t4        t5        t6
+
+POWER_ON
+-------- 
+BAT+     ____/‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
+
+COLD-START DELAY
+----------------
+DELAY_OK  ________...................../‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
+           (CDELAY charging)           (t1)
+
+GLOBAL_SHUTDOWN (initial)
+-------------------------
+GLOBAL_SHUTDOWN  ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
+                  (held HIGH until logic allows enable)
+
+ENABLE_WINDOW (conceptual)
+--------------------------
+ENABLE_WINDOW   ________/‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
+                 (DELAY_OK HIGH, no faults yet)       (t1→t2)
+
+
+FAULT EVENTS
+============
+
+1) CURRENT SPIKE (short / overload)
+-----------------------------------
+I_FAULT      ____________________/‾‾‾‾‾‾‾‾‾‾‾\___________
+                                   (t2)       (clears if transient)
+
+MATRIX_FAULT ____________________/‾‾‾‾‾‾‾‾‾‾‾\___________
+
+FAULT_LINE   ____________________/‾‾‾‾‾‾‾‾‾‾‾\___________
+
+MASTER_FAULT_OUT
+(only if latched)  ________/‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
+                    (t2, latch set)  (stays HIGH)
+
+GLOBAL_SHUTDOWN
+----------------
+GLOBAL_SHUTDOWN  ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
+                  (remains HIGH once master fault latched)
+
+
+2) THERMAL RISE + HYSTERESIS
+----------------------------
+NODE_TH     ___/‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾\___
+             (temp climbing)                         (cooling)
+
+HOT_FAULT   ________/‾‾‾‾‾‾‾‾‾‾‾‾‾\____________________
+             (trip at T_HIGH_REF, t3)
+
+HYST_LATCH_OUT
+-------------- 
+HYST_LATCH_OUT ________/‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
+                 (set by HOT_FAULT, stays HIGH)
+
+COOL_OK     ________________________________/‾‾‾‾‾‾‾‾‾‾‾
+                                             (t4, temp < T_LOW_REF)
+
+HYST_LATCH_OUT (after reset)
+----------------------------
+HYST_LATCH_OUT ________/‾‾‾‾‾‾‾‾‾‾‾‾‾\________________
+                 (t3)                 (cleared at t4)
+
+
+3) MASTER LATCH & RESET
+-----------------------
+MASTER_FAULT_OUT  ________/‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
+                    (set by FAULT_LINE/HYST_FAULT at t2/t3)
+
+RESET_SW    ________________________________/‾‾‾‾\_______
+                                             (t5 pulse)
+
+MASTER_FAULT_OUT  ________/‾‾‾‾‾‾‾‾‾‾‾‾‾\________________
+                    (latched)             (cleared at t5)
+
+GLOBAL_SHUTDOWN   ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾\________________
+                                          (system allowed again)
+
+
+INTERPLAY SUMMARY
+-----------------
+- t0: Power on, DELAY_OK low, GLOBAL_SHUTDOWN high (no enable).
+- t1: Cold-start delay expires → DELAY_OK high → window for operation.
+- t2: Current spike → MATRIX_FAULT → FAULT_LINE → MASTER_FAULT_OUT set.
+- t3: Thermal rise → HOT_FAULT → HYST_LATCH_OUT high (cooldown required).
+- t4: Temperature drops below T_LOW_REF → COOL_OK → HYST_LATCH_OUT cleared.
+- t5: User presses RESET_SW → MASTER_FAULT_OUT cleared → GLOBAL_SHUTDOWN low.
+- t6: System is again in a state where it *could* enable, if upstream logic allows.
+
