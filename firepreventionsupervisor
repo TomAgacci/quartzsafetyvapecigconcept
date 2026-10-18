@@ -1,0 +1,87 @@
++--------------------------------------------------------------+
+|                 FIRE‑PREVENTION SUPERVISOR                   |
+|                 (THERMAL + CURRENT + SHUTDOWN)               |
++--------------------------------------------------------------+
+
+   POWER INPUT
+   -----------
+   [BAT+]----[FUSE]----+-------------------------------+
+                       |                               |
+                      [RSENSE]                         |
+                       |                               |
+                      NODE_I                           |
+                                                        |
+   [BAT-]------------------------------------------------+---- GND
+
+
+   TEMPERATURE SENSE (ANTI‑FIRE)
+   -----------------------------
+   [NTC] 10kΩ thermistor mounted near hotspot
+       |
+      NODE_T ------------------------+
+                                     |
+   NODE_T --> [U1] Comparator        |
+              IN+ = NODE_T           |
+              IN- = T_REF (safe temp)|----> T_FAULT
+                                     |
+   T_FAULT ----[Q1] NPN----+---------+
+                           |         
+                           +----> SHUTDOWN_LINE
+
+
+   CURRENT SENSE (SHORT / OVERLOAD)
+   --------------------------------
+   NODE_I --> [U2] Comparator
+              IN+ = scaled NODE_I
+              IN- = I_REF (max safe current)
+
+   U2_OUT ----[Q2] NPN----+---------+
+                           |         
+                           +----> SHUTDOWN_LINE
+
+
+   VOLTAGE MONITOR (BROWNOUT / OVERLOAD RISK)
+   ------------------------------------------
+   [BAT+]--divider--> NODE_V
+
+   NODE_V --> [U3] Comparator
+              IN+ = NODE_V
+              IN- = V_MIN_REF
+
+   U3_OUT ----[Q3] NPN----+---------+
+                           |         
+                           +----> SHUTDOWN_LINE
+
+
+   SHUTDOWN LOGIC (FIRE PREVENTION)
+   --------------------------------
+   SHUTDOWN_LINE --> [Q4] NPN (master cutoff)
+                      |
+                      +----> DISABLE_DRIVER
+                      |
+                      +----> LED_FAULT (via R)
+
+   DISABLE_DRIVER:
+      - Pulls gate/base of main power transistor LOW
+      - Ignores button input
+      - Prevents thermal runaway
+      - Prevents over‑current ignition
+      - Prevents undervoltage stress
+
+
+   OPTIONAL LATCH (MANUAL RESET)
+   -----------------------------
+   SHUTDOWN_LINE --> [Q5/Q6] latch pair
+                      |
+                      +----> requires RESET switch
+                      |
+   [RESET_SW]---- clears latch → re‑enable system
+
++--------------------------------------------------------------+
+| BEHAVIOR                                                     |
+| - If temp rises too high → immediate shutdown                |
+| - If current spikes → immediate shutdown                     |
+| - If voltage sags → shutdown (prevents overheating)          |
+| - Fault LED lights                                           |
+| - Optional latch prevents auto‑restart                       |
++--------------------------------------------------------------+
