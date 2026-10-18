@@ -1,0 +1,20 @@
++------------------ COLD‑START DELAY ------------------+
+
+  [BAT+]------------------------+------------------+
+                                |                  |
+                               [RCH] 100kΩ        [SW_MAIN]
+                                |                  |
+                               [CDELAY] 10µF       |
+                                |                  |
+                               NODE_DELAY          +----> DRIVER_ENABLE
+                                |
+  [BAT-]------------------------+------------------+
+
+  NODE_DELAY --> [Q1] NPN (inverter)
+                  |
+                  +--> ENABLE_LINE (HIGH only after CDELAY charged)
+
+  BEHAVIOR:
+  - On power‑up, CDELAY is empty → NODE_DELAY low → ENABLE_LINE low.
+  - After ~RCH·CDELAY, NODE_DELAY rises → Q1 switches → DRIVER_ENABLE allowed.
+  - Prevents immediate full current at cold start.
