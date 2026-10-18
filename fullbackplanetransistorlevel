@@ -1,0 +1,288 @@
++======================================================================================+
+|                         FULL BACKPLANE — TRANSISTOR LEVEL                       |
+|                Discrete Logic + Safety Computer (No MCU, No Load)                    |
++======================================================================================+
+
+POWER & BASELINES
+-----------------
+[BAT+]----[FUSE]----+-------------------------------+
+                    |                               |
+                   [RSENSE]                         |
+                    |                               |
+                   NODE_I                           |
+                                                   GND
+[BAT-]------------------------------------------------+
+
+
+======================================================================================
+1. COLD-START DELAY (TRANSISTOR-LEVEL)
+======================================================================================
+
+[BAT+]----[RCH] 100kΩ----+---- NODE_DELAY
+                         |
+                        [CDELAY] 10µF
+                         |
+                        GND
+
+NODE_DELAY → Q1 (NPN inverter):
+
+   Q1:
+     - Collector: DELAY_OK
+     - Base: NODE_DELAY via R1
+     - Emitter: GND
+
+DELAY_OK ----[RDK]----> ENABLE_WINDOW
+
+
+======================================================================================
+2. MULTI-SENSOR MATRIX (TRANSISTOR-LEVEL LOGIC)
+======================================================================================
+
+SENSORS:
+  NODE_I    (from RSENSE)
+  NODE_TH   (NTC hotspot)
+  NODE_CASE (NTC enclosure)
+  NODE_AIR  (airflow sensor)
+
+COMPARATORS (IC blocks):
+  U_I    : NODE_I vs I_REF_MAX   → I_FAULT
+  U_TH   : NODE_TH vs T_REF_HOT  → TH_FAULT
+  U_CASE : NODE_CASE vs T_REF_CASE → CASE_FAULT
+  U_AIR  : NODE_AIR vs AIR_MIN   → AIR_FAULT
+
+OR NETWORK (discrete):
+
+  I_FAULT ----[R2]----> base Q2A (NPN)
+  TH_FAULT ---[R3]----> base Q2B (NPN)
+  CASE_FAULT -[R4]----> base Q2C (NPN)
+  AIR_FAULT --[R5]----> base Q2D (NPN)
+
+  Q2A, Q2B, Q2C, Q2D:
+    - Emitters: GND
+    - Collectors tied together → NODE_OR
+
+NODE_OR → Q2 (NPN buffer):
+
+  Q2:
+    - Collector: FAULT_LINE
+    - Base: NODE_OR via R6
+    - Emitter: GND
+
+
+======================================================================================
+3. THERMAL HYSTERESIS BLOCK (TRANSISTOR-LEVEL LATCH)
+======================================================================================
+
+COMPARATORS:
+  U_HI : NODE_TH vs T_HIGH_REF → HOT_FAULT
+  U_LO : NODE_TH vs T_LOW_REF  → COOL_OK
+
+HOT_FAULT → Q3 (NPN set driver):
+
+  Q3:
+    - Collector: HYST_SET_NODE
+    - Base: HOT_FAULT via R7
+    - Emitter: GND
+
+COOL_OK → Q4 (NPN reset driver):
+
+  Q4:
+    - Collector: HYST_RESET_NODE
+    - Base: COOL_OK via R8
+    - Emitter: GND
+
+SR LATCH (cross-coupled NPN pair):
+
+  QH_SET (NPN):
+    - Collector: HYST_LATCH_OUT
+    - Base: HYST_SET_NODE via R9 and feedback from QH_RESET collector via R10
+    - Emitter: GND
+
+  QH_RESET (NPN):
+    - Collector: HYST_LATCH_BAR
+    - Base: HYST_RESET_NODE via R11 and feedback from QH_SET collector via R12
+    - Emitter: GND
+
+HYST_LATCH_OUT → HYST_FAULT
+
+
+======================================================================================
+4. MASTER SAFETY LATCH (TRANSISTOR-LEVEL)
+======================================================================================
+
+FAULT_LINE ----[R13]----> base Q5 (NPN)
+HYST_FAULT ----[R14]----> base Q5 (wired-OR via resistors)
+
+Q5 (NPN set driver):
+  - Collector: MASTER_SET_NODE
+  - Base: from R13/R14 node
+  - Emitter: GND
+
+RESET_SW ----[R15]----> base Q6 (NPN)
+
+Q6 (NPN reset driver):
+  - Collector: MASTER_RESET_NODE
+  - Base: RESET_SW via R15
+  - Emitter: GND
+
+MASTER SR LATCH:
+
+  QM_SET (NPN):
+    - Collector: MASTER_FAULT_OUT
+    - Base: MASTER_SET_NODE via R16 and feedback from QM_RESET collector via R17
+    - Emitter: GND
+
+  QM_RESET (NPN):
+    - Collector: MASTER_FAULT_BAR
+    - Base: MASTER_RESET_NODE via R18 and feedback from QM_SET collector via R19
+    - Emitter: GND
+
+MASTER_FAULT_OUT → GLOBAL_SHUTDOWN
+
+
+======================================================================================
+5. GLOBAL SHUTDOWN & INDICATORS (TRANSISTOR-LEVEL)
+======================================================================================
+
+GLOBAL_SHUTDOWN:
+  MASTER_FAULT_OUT ----> GLOBAL_SHUTDOWN (logic node)
+
+LED drivers:
+
+  MATRIX_FAULT ----[RLED1]----> base QLED1 (NPN)
+  HYST_FAULT   ----[RLED2]----> base QLED2 (NPN)
+  MASTER_FAULT_OUT ----[RLED3]----> base QLED3 (NPN)
+
+  QLED1, QLED2, QLED3:
+    - Collectors: respective LED anodes
+    - Emitters: GND
+    - LED cathodes to supply via resistors (or vice versa, depending on polarity)
+
+
+======================================================================================
+6. TAMA ENGINE — DISCRETE MCU CORE (TRANSISTOR-LEVEL)
+======================================================================================
+
+BUTTON DEBOUNCE & PULSE:
+
+  [BTN_OP]----+------------------------[RPU] 10kΩ----+---- 5V
+              |                                      |
+             [C1] 100nF                             Q7 (NPN)
+              |                                      |
+             GND                                   NODE_OP
+
+  Q7:
+    - Collector: NODE_OP
+    - Base: BTN_OP via R20
+    - Emitter: GND
+
+POTENTIOMETER & COMPARATOR LADDER:
+
+  [POT] top ---- 5V
+  [POT] wiper --+----> NODE_ANALOG
+  [POT] bottom - GND
+
+  NODE_ANALOG --[R21]--+--[R22]--+--[R23]--+--[R24]-- GND
+                        |        |        |
+                       Q8       Q9       Q10
+                        |        |        |
+                      BIT0     BIT1     BIT2
+
+  Q8, Q9, Q10:
+    - Bases: taps along ladder
+    - Collectors: BIT0/1/2 nodes
+    - Emitters: GND
+
+ADD/SUB MODE:
+
+  [SW_MODE]----[RMS] 10kΩ---- 5V
+               |
+              Q11 (NPN) → NODE_MODE
+
+  Q11:
+    - Collector: NODE_MODE
+    - Base: SW_MODE via RMS
+    - Emitter: GND
+
+XOR GATES FOR TWO’S COMPLEMENT (per bit):
+
+  For each BITn:
+
+    BITn ----> XOR gate with NODE_MODE:
+
+    XOR gate (4 × NPN: QX1–QX4):
+
+      QX1, QX2, QX3, QX4:
+        - Arranged in standard transistor XOR topology:
+          SUMn = BITn ⊕ NODE_MODE
+        - Output: BITn'
+
+FULL ADDERS (FA0–FA3):
+
+  Each FAx uses:
+    - XOR gates (4 × NPN)
+    - AND gates (2 × NPN)
+    - OR gate (2 × NPN)
+
+  Inputs:
+    A = ACCx (previous)
+    B = BITx' (operand)
+    Cin = carry from previous stage
+
+  Outputs:
+    SUMx → FFx D input
+    Coutx → next FA carry input
+
+FLIP-FLOPS (FF0–FF3):
+
+  Each FFx is a master–slave latch pair:
+
+    Master latch:
+      QF_M1, QF_M2 (NPN pair)
+        - Cross-coupled
+        - D input from SUMx
+        - Clock from NODE_OP
+
+    Slave latch:
+      QF_S1, QF_S2 (NPN pair)
+        - Cross-coupled
+        - Driven by master
+        - Outputs ACCx
+
+CLOCK DISTRIBUTION:
+
+  NODE_OP ----[RCLK] 1kΩ----> bases of all FF master latch transistors (QF_M1..M4)
+
+OUTPUT LEDs:
+
+  ACC0 ----[RLED4]----> base QOUT0 (NPN)
+  ACC1 ----[RLED5]----> base QOUT1 (NPN)
+  ACC2 ----[RLED6]----> base QOUT2 (NPN)
+  ACC3 ----[RLED7]----> base QOUT3 (NPN)
+
+  QOUT0–QOUT3:
+    - Collectors: LED anodes
+    - Emitters: GND
+    - LED cathodes to supply via resistors (or inverted, depending on design)
+
+
+======================================================================================
+TRANSISTOR COUNT (APPROXIMATE, EDUCATIONAL)
+======================================================================================
+
+- Cold-start:        1 × NPN (Q1)
+- Matrix OR + buffer: 5 × NPN (Q2A–D, Q2)
+- Hysteresis latch:   4 × NPN (Q3, Q4, QH_SET, QH_RESET)
+- Master latch:       4 × NPN (Q5, Q6, QM_SET, QM_RESET)
+- LED drivers:        3 × NPN (QLED1–3)
+- Button + pot front-end: 4 × NPN (Q7, Q8–Q10)
+- Mode + XOR + adders + FFs: dozens of NPNs (gate + latch network)
+- Output drivers:     4 × NPN (QOUT0–3)
+
+Total: on the order of **50–100 NPN transistors** for the full logic + safety backplane.
+
++======================================================================================+
+| This is the transistor-level view: every discrete logic element is broken down       |
+| to individual NPN devices, while analog comparators remain as IC blocks.             |
+| Still no load, no driver, no heater — just the safety + logic brain.                 |
++======================================================================================+
