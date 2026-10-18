@@ -1,0 +1,24 @@
++---------------- THERMAL HYSTERESIS BLOCK ----------------+
+
+  [NTC_HOTSPOT] --> NODE_TH
+
+  NODE_TH --> [U1] Comparator
+               IN+ = NODE_TH
+               IN- = T_HIGH_REF  (trip temp)
+
+  NODE_TH --> [U2] Comparator
+               IN+ = NODE_TH
+               IN- = T_LOW_REF   (reset temp)
+
+  U1_OUT = HOT_FAULT
+  U2_OUT = COOL_OK
+
+  HOT_FAULT ----[Q1] NPN----> LATCH_FAULT
+  COOL_OK  ----[Q2] NPN----> CLEAR_FAULT (only when temp < T_LOW_REF)
+
+  LATCH_FAULT --> DISABLE_DRIVER
+
+  BEHAVIOR:
+  - When temp > T_HIGH_REF → HOT_FAULT sets LATCH_FAULT → driver off.
+  - Driver stays off until temp < T_LOW_REF → COOL_OK clears latch.
+  - Hysteresis prevents rapid on/off chattering around threshold.
