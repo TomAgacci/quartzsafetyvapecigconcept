@@ -1,0 +1,90 @@
++======================================================================================+
+|                               BACKPLANE CPU — CHIP MAP                          |
+|                     Retro Die-Layout of All Transistor Clusters                      |
++======================================================================================+
+
+   ┌──────────────────────────────────────────────────────────────────────────────┐
+   │                                POWER & CLOCK PLANE                           │
+   │  • VREG island                                                               │
+   │  • BAT+ rail / BAT– substrate                                                 │
+   │  • Global CLK distributor (NODE_OP buffer tree)                               │
+   └──────────────────────────────────────────────────────────────────────────────┘
+
+   ┌──────────────────────────────────────────────────────────────────────────────┐
+   │                              COLD-START REGION                               │
+   │  Q1: Delay inverter                                                           │
+   │  RCH/CDELAY: RC timing trench                                                  │
+   │  DELAY_OK buffer cluster                                                       │
+   └──────────────────────────────────────────────────────────────────────────────┘
+
+   ┌──────────────────────────────────────────────────────────────────────────────┐
+   │                         MULTI-SENSOR MATRIX REGION                            │
+   │  Q2A–Q2D: Fault OR transistor quad                                             │
+   │  Q2: Matrix buffer                                                             │
+   │  Comparator pads (U_I, U_TH, U_CASE, U_AIR)                                    │
+   │  Sensor input vias                                                             │
+   └──────────────────────────────────────────────────────────────────────────────┘
+
+   ┌──────────────────────────────────────────────────────────────────────────────┐
+   │                           THERMAL HYSTERESIS REGION                           │
+   │  Q3: HOT_FAULT driver                                                          │
+   │  Q4: COOL_OK driver                                                            │
+   │  QH_SET / QH_RESET: SR latch pair                                              │
+   │  HYST_LATCH_OUT bus                                                            │
+   └──────────────────────────────────────────────────────────────────────────────┘
+
+   ┌──────────────────────────────────────────────────────────────────────────────┐
+   │                           MASTER LATCH REGION                                 │
+   │  Q5: MASTER_SET driver                                                         │
+   │  Q6: MASTER_RESET driver                                                       │
+   │  QM_SET / QM_RESET: global SR latch                                            │
+   │  MASTER_FAULT_OUT trunk                                                         │
+   └──────────────────────────────────────────────────────────────────────────────┘
+
+   ┌──────────────────────────────────────────────────────────────────────────────┐
+   │                           GLOBAL SHUTDOWN REGION                              │
+   │  QLED1–QLED3: Indicator drivers                                                │
+   │  Shutdown bus routing                                                          │
+   │  Fault LED pads                                                                │
+   └──────────────────────────────────────────────────────────────────────────────┘
+
+   ┌──────────────────────────────────────────────────────────────────────────────┐
+   │                        ENGINE — FRONT-END REGION                          │
+   │  Q7: Button debounce transistor                                                 │
+   │  Q8–Q10: Pot ladder comparators                                                 │
+   │  BIT0/1/2 operand bus                                                           │
+   │  MODE switch pad                                                                │
+   │  Q11: SUB mode transistor                                                       │
+   └──────────────────────────────────────────────────────────────────────────────┘
+
+   ┌──────────────────────────────────────────────────────────────────────────────┐
+   │                        ENGINE — LOGIC CORE REGION                         │
+   │  XOR cells (QX1–QX4 per bit)                                                    │
+   │  AND/OR gate clusters                                                           │
+   │  FA0–FA3 full adder blocks                                                      │
+   │  Carry chain trench                                                             │
+   │  SUM bus                                                                        │
+   └──────────────────────────────────────────────────────────────────────────────┘
+
+   ┌──────────────────────────────────────────────────────────────────────────────┐
+   │                        ENGINE — REGISTER FILE REGION                      │
+   │  FF0–FF3 master latch pairs (QF_M1/QF_M2)                                       │
+   │  FF0–FF3 slave latch pairs (QF_S1/QF_S2)                                        │
+   │  ACC0–ACC3 output bus                                                           │
+   │  Register clock tap                                                             │
+   └──────────────────────────────────────────────────────────────────────────────┘
+
+   ┌──────────────────────────────────────────────────────────────────────────────┐
+   │                        ENGINE — OUTPUT REGION                             │
+   │  QOUT0–QOUT3: LED driver transistors                                            │
+   │  LED pad array                                                                  │
+   │  ACC bus termination                                                             │
+   └──────────────────────────────────────────────────────────────────────────────┘
+
++======================================================================================+
+| CHIP OVERVIEW                                                                        |
+| • Every transistor cluster is represented as a region, like a vintage CPU die.       |
+| • Safety logic and Tama arithmetic logic coexist as separate silicon neighborhoods.  |
+| • Carry chain, latch pairs, XOR blocks, and sensor matrix all appear as chip blocks. |
+| • No load, no heater — this is purely the logic/safety brain.                        |
++======================================================================================+
